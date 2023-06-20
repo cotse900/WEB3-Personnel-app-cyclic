@@ -88,8 +88,18 @@ exports.getEmployeesByManager = function(manager) {
 exports.getEmployeesByNum = function(employeeNum) {
     return new Promise ((resolve,reject) => {
         var filtered = employees.filter(employee => employee.employeeNum == employeeNum);
-        resolve(filtered);
+        resolve(filtered[0]);
         if (filtered.length == 0)
         reject("no results returned");
     })
 }
+exports.updateEmployee = function(employeeData){
+    return new Promise((resolve, reject) => {
+        employees.forEach(employee => {
+            if (employee.employeeNum == employeeData.employeeNum) {
+                employees.splice(employeeData.employeeNum - 1, 1, employeeData);
+            }
+        });
+        resolve();
+    });
+};

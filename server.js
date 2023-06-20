@@ -1,9 +1,3 @@
-/*
-Reboot of Personnel App using Cyclic
-Chungon Tse
-https://puzzled-clam-attire.cyclic.app
-https://github.com/cotse900/WEB3-Personnel-app-cyclic
-*/
 const HTTP_PORT = process.env.PORT || 8080;
 const express = require("express");
 const fs = require("fs");
@@ -12,7 +6,8 @@ const multer = require("multer");
 const path = require("path");
 const dataService = require('./data-service.js');
 const bodyParser = require("body-parser");
-
+const exphbs = require("express-handlebars");
+//multer
 const storage = multer.diskStorage({
     destination: "./public/images/uploaded",
     filename: function (req, file, cb){
@@ -20,64 +15,93 @@ const storage = multer.diskStorage({
     }
 });
 var upload = multer({storage: storage});
-
+app.use(bodyParser.urlencoded({extended: true}));
+app.use(express.static('public'));
+//hbs
+app.engine('.hbs', exphbs.engine({
+    extname: '.hbs',
+    defaultLayout: 'main',
+    helpers: {
+        navLink: function(url, options){
+            return '<li' + ((url == app.locals.activeRoute) ? ' class="active" ' : '')
+            +'><a href="' + url + '">' + options.fn(this) + '</a></li>';
+        },
+        equal: function (lvalue, rvalue, options) {
+            if (arguments.length < 3)
+            throw new Error("Handlebars Helper equal needs 2 parameters");
+            if (lvalue != rvalue) {
+            return options.inverse(this);
+            } else {
+            return options.fn(this);
+            }
+        }
+    }
+}));
+app.set('view engine', '.hbs');
+app.use(function(req,res,next){
+    let route = req.baseUrl + req.path;
+    app.locals.activeRoute = (route == "/") ? "/" : route.replace(/\/$/, "");
+    next();
+    });
 onHttpStart = () => {
     console.log('Express http server listening on port ' + HTTP_PORT);
 };
-
-app.use(bodyParser.urlencoded({extended: true}));
-app.use(express.static('public'));
-
+//routes
 app.get("/", (req,res) => {
-    res.sendFile(path.join(__dirname + "/views/home.html"));
+    res.render(path.join(__dirname + "/views/home.hbs"));
 });
 app.get('/home', (req,res) => {
-    res.sendFile(path.join(__dirname + "/views/home.html"));
+    res.render(path.join(__dirname + "/views/home.hbs"));
 });
 app.get("/about", (req,res) => {
-    res.sendFile(path.join(__dirname + "/views/about.html"));
+    res.render(path.join(__dirname + "/views/about.hbs"));
 });
 app.get("/employees/add", (req,res) => {
-    res.sendFile(path.join(__dirname + "/views/addEmployee.html"));
+    res.render(path.join(__dirname + "/views/addEmployee.hbs"));
 });
 app.get("/images/add", (req,res) => {
-    res.sendFile(path.join(__dirname + "/views/addImage.html"));
+    res.render(path.join(__dirname + "/views/addImage.hbs"));
 });
 app.get("/employee/:employeeNum", (req,res) => {
     dataService.getEmployeesByNum(req.params.employeeNum)
     .then((data) =>{
-        res.json(data);
-    }).catch((err) =>{
-        res.json({message: err});
+        res.render("employee",{employee: data});
+    }).catch(() =>{
+        res.render("employee",{message: "no results"});
     })
 });
 //employee funcs
 app.get("/employees", (req,res) => {
     if (req.query.status){
         dataService.getEmployeesByStatus(req.query.status)
-        .then((data) => res.json(data))
-        .catch((err) => res.json({message: err}))
+        .then((data) => res.render("employees",{employees:data}))
+        .catch(() => req.render("employees",{message: "no results"}))
     }
     else if (req.query.department){
         dataService.getEmployeesByDepartment(req.query.department)
-        .then((data) => res.json(data))
-        .catch((err) => res.json({message: err}))
+        .then((data) => res.render("employees",{employees:data}))
+        .catch(() => req.render("employees",{message: "no results"}))
     }
     else if (req.query.manager){
         dataService.getEmployeesByManager(req.query.manager)
-        .then((data) => res.json(data))
-        .catch((err) => res.json({message: err}))
+        .then((data) => res.render("employees",{employees:data}))
+        .catch(() => req.render("employees",{message: "no results"}))
     }
     else {
         dataService.getAllEmployees()
-        .then((data) => res.json(data))
-        .catch((err) => res.json({message: err}))
+        .then((data) => res.render("employees",{employees:data}))
+        .catch(() => req.render("employees",{message: "no results"}))
     }
 });
 app.post("/employees/add", (req,res) => {
     dataService.addEmployee(req.body)
-    .then(res.redirect('/employees'))
-    .catch((err) => res.json({message: err}))
+    .then(() => {res.redirect("/employees")}
+    );
+});
+app.post("/employee/update", (req, res) => {
+    dataService.updateEmployee(req.body)
+    .then(() => {res.redirect("/employees")}
+    );
 });
 //image funcs
 app.post("/images/add", upload.single("imageFile"), (req,res) => {
@@ -85,10 +109,8 @@ app.post("/images/add", upload.single("imageFile"), (req,res) => {
 });
 app.get("/images", (req,res) => {
     fs.readdir("./public/images/uploaded", function(err, imageFile) {
-        if (err){
-            return console.log("Unable to load images" + err);
-        }
-        res.json({images: imageFile});
+        //res.render({images: imageFile});
+        res.render("images", { data: imageFile, title: "Images"});
     })
 });
 //manager func
@@ -102,9 +124,9 @@ app.get("/managers", (req,res) => {
 //dept func
 app.get("/departments", (req,res) => {
     dataService.getDepartments().then((data) => {
-        res.json({data});
-    }).catch((err) => {
-        res.json({message: err});
+        res.render("departments",{departments:data});
+    }).catch(() => {
+        res.render("departments",{message: "no results"});
     })
 });
 
