@@ -8,13 +8,9 @@ const dataService = require('./data-service.js');
 const bodyParser = require("body-parser");
 const exphbs = require("express-handlebars");
 //multer
-const storage = multer.diskStorage({
-    destination: "./public/images/uploaded",
-    filename: function (req, file, cb){
-        cb(null, Date.now() + path.extname(file.originalname));
-    }
-});
-var upload = multer({storage: storage});
+
+var upload = multer();
+
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(express.static('public'));
 //hbs
@@ -59,9 +55,7 @@ app.get("/about", (req,res) => {
 app.get("/employees/add", (req,res) => {
     res.render(path.join(__dirname + "/views/addEmployee.hbs"));
 });
-app.get("/images/add", (req,res) => {
-    res.render(path.join(__dirname + "/views/addImage.hbs"));
-});
+
 app.get("/employee/:employeeNum", (req,res) => {
     dataService.getEmployeesByNum(req.params.employeeNum)
     .then((data) =>{
@@ -103,16 +97,7 @@ app.post("/employee/update", (req, res) => {
     .then(() => {res.redirect("/employees")}
     );
 });
-//image funcs
-app.post("/images/add", upload.single("imageFile"), (req,res) => {
-    res.redirect("/images");
-});
-app.get("/images", (req,res) => {
-    fs.readdir("./public/images/uploaded", function(err, imageFile) {
-        //res.render({images: imageFile});
-        res.render("images", { data: imageFile, title: "Images"});
-    })
-});
+
 //manager func
 app.get("/managers", (req,res) => {
     dataService.getManagers().then((data) => {
